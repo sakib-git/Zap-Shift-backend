@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 const admin = require('firebase-admin');
 
-const serviceAccount = require('./zapshift--firebase-adminsdk.json');
+const serviceAccount = JSON.parse(process.env.FIRE_BASE_ADMIN_SECRET)
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -23,6 +23,7 @@ async function generateTrackingId() {
 }
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { json } = require('stream/consumers');
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 // middleware
