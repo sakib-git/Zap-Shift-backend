@@ -163,6 +163,24 @@ if(searchAdmin){
       res.send(result);
     });
 
+
+app.get('/parcels/rider', async(req, res) => {
+  const {riderEmail, deliveryStatus} = req.query;
+  const query = {}
+  if(riderEmail){
+    query.riderEmail = riderEmail
+  }
+  if(deliveryStatus){
+    // query.deliveryStatus = {$in: ['driver_assigned', 'rider_arriving']}
+    query.deliveryStatus = {$nin: ['parcel_delivered']}
+  }
+
+  const cursor = parcelsCollection.find(query)
+  const result = await cursor.toArray()
+  res.send(result)
+})
+
+
     app.get('/parcels/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -177,6 +195,54 @@ if(searchAdmin){
       const result = await parcelsCollection.insertOne(parcel);
       res.send(result);
     });
+
+
+
+
+
+// rename this to be specific like /parcels/:id?assign
+    app.patch('/parcels/:id', async (req, res) => {
+      const {riderId, riderName, riderEmail } = req.body;
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+
+      const updatedDoc = {
+        $set: {
+        deliveryStatus:'driver_assigned',
+        riderId: riderId,
+        riderName:riderName,
+        riderEmail:riderEmail
+        }
+      }
+
+      const result = await parcelsCollection.updateOne(query, updatedDoc)
+
+      // update rider information
+      const riderQuery = {_id: new ObjectId(riderId)}
+      const riderUpdatedDoc = {
+        $set:{
+          workStatus: 'in_delivery'
+        }
+      }
+      const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdatedDoc)
+
+      res.send(riderResult)
+
+    })
+
+app.patch('/parcels/:id/status', async(req,res) => {
+  const {deliveryStatus} = req.body
+  const query = {_id: new ObjectId(req.params.id)}
+  const updatedDoc = {
+    $set:{
+      deliveryStatus: deliveryStatus
+    }
+  }
+  const result = await parcelsCollection.updateOne(query, updatedDoc)
+  res.send(result)
+
+})
+
 
     app.delete('/parcels/:id', async (req, res) => {
       const id = req.params.id;
@@ -229,7 +295,7 @@ if(searchAdmin){
       const query = { transactionId: transactionId };
 
       const paymentExist = await paymentCollection.findOne(query);
-      console.log(paymentExist);
+      // console.log(paymentExist);
       if (paymentExist) {
         return res.send({
           message: 'already exists',
@@ -297,10 +363,20 @@ if(searchAdmin){
     //riders api
 
     app.get('/riders', async (req, res) => {
+
+      const {status, District, workStatus} = req.query
       const query = {};
-      if (req.query.status) {
-        query.status = req.query.status;
+      if (status) {
+        query.status = status;
       }
+
+      if(District){
+        query.District = District
+      }
+      if(workStatus){
+        query.workStatus = workStatus
+      }
+
       const cursor = ridersCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
